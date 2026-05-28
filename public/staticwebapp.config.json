@@ -1,0 +1,12 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*", "/favicon.ico"]
+  },
+  "globalHeaders": {
+    "Cache-Control": "no-store"
+  },
+  "mimeTypes": {
+    ".json": "application/json"
+  }
+}
