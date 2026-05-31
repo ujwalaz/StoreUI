@@ -12,6 +12,7 @@ export default function MerchantLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!/^\d{10}$/.test(form.phoneNumber)) { setError('Enter a valid 10-digit mobile number'); return }
     setLoading(true); setError('')
     try {
       const data = await merchantLogin(form.phoneNumber, form.password)
@@ -37,9 +38,20 @@ export default function MerchantLogin() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-              <input type="tel" value={form.phoneNumber} onChange={set('phoneNumber')} required
-                placeholder="Registered phone number"
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  maxLength={10}
+                  value={form.phoneNumber}
+                  onChange={e => setForm(f => ({ ...f, phoneNumber: e.target.value.replace(/\D/g, '') }))}
+                  required
+                  placeholder="10-digit mobile number"
+                  className="flex-1 border border-gray-300 rounded-r-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>

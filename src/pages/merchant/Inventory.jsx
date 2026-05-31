@@ -2,12 +2,19 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import MerchantLayout from '../../components/MerchantLayout'
 import { getInventory, updateInventory } from '../../api/inventory'
+import { getMerchantProducts } from '../../api/products'
 
 export default function Inventory() {
   const qc = useQueryClient()
   const { data: inventory = [], isLoading } = useQuery({
     queryKey: ['inventory'], queryFn: getInventory
   })
+
+  const { data: products = [] } = useQuery({
+    queryKey: ['mProducts'], queryFn: getMerchantProducts
+  })
+
+  const productNameMap = Object.fromEntries(products.map(p => [p.id, p.name]))
 
   const update = useMutation({
     mutationFn: ({ productId, quantity }) => updateInventory(productId, quantity),
@@ -34,7 +41,7 @@ export default function Inventory() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {['Product ID', 'Stock', 'Threshold', 'Status', 'Update'].map(h => (
+                {['Product', 'Stock', 'Threshold', 'Status', 'Update'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -45,7 +52,9 @@ export default function Inventory() {
                 const isLow = item.quantityOnHand <= item.lowStockThreshold && item.quantityOnHand > 0
                 return (
                   <tr key={item.productId} className={isLow ? 'bg-yellow-50/50' : ''}>
-                    <td className="px-4 py-3 font-medium text-gray-800">#{item.productId}</td>
+                    <td className="px-4 py-3 font-medium text-gray-800">
+                      {productNameMap[item.productId] || `Product #${item.productId}`}
+                    </td>
                     <td className="px-4 py-3">{item.quantityOnHand}</td>
                     <td className="px-4 py-3 text-gray-500">{item.lowStockThreshold}</td>
                     <td className="px-4 py-3">
