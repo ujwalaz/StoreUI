@@ -9,6 +9,7 @@ import { useCartStore } from '../../store/cartStore'
 
 export default function Shop() {
   const [cartOpen, setCartOpen] = useState(false)
+  const [search, setSearch] = useState('')
   const cartCount = useCartStore(s => s.items.reduce((n, i) => n + i.quantity, 0))
 
   const { data: products = [], isLoading: loadingProducts } = useQuery({
@@ -21,15 +22,26 @@ export default function Shop() {
     queryFn: getMerchantInfo
   })
 
+  const filtered = products.filter(p =>
+    p.name?.toLowerCase().includes(search.toLowerCase())
+  )
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="font-bold text-lg text-indigo-700">
-            {merchantInfo?.businessName || 'MRP Store'}
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <h1 className="font-bold text-lg text-indigo-700 shrink-0">
+            {merchantInfo?.businessName || 'Grand Fresh'}
           </h1>
-          <div className="flex items-center gap-4">
+          <input
+            type="search"
+            placeholder="Search products…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 min-w-0 border border-gray-300 rounded-full px-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <div className="flex items-center gap-3 shrink-0">
             <Link to="/my-orders" className="text-sm text-gray-600 hover:text-indigo-600">My Orders</Link>
             <button onClick={() => setCartOpen(true)}
               className="relative bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-medium">
@@ -48,11 +60,13 @@ export default function Shop() {
       <main className="max-w-6xl mx-auto w-full px-4 py-6 flex-1">
         {loadingProducts ? (
           <div className="text-center py-20 text-gray-400">Loading products…</div>
-        ) : products.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">No products available</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 text-gray-400">
+            {search ? 'No products match your search' : 'No products available'}
+          </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {products.map(p => <ProductCard key={p.id} product={p} />)}
+            {filtered.map(p => <ProductCard key={p.id} product={p} />)}
           </div>
         )}
       </main>

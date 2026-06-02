@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import MerchantLayout from '../../components/MerchantLayout'
 import { getInventory, updateInventory } from '../../api/inventory'
-import { getMerchantProducts } from '../../api/products'
 
 export default function Inventory() {
   const qc = useQueryClient()
@@ -10,21 +9,20 @@ export default function Inventory() {
     queryKey: ['inventory'], queryFn: getInventory
   })
 
-  const { data: products = [] } = useQuery({
-    queryKey: ['mProducts'], queryFn: getMerchantProducts
-  })
-
-  const productNameMap = Object.fromEntries(products.map(p => [p.id, p.name]))
-
   const update = useMutation({
     mutationFn: ({ productId, quantity }) => updateInventory(productId, quantity),
     onSuccess: () => qc.invalidateQueries(['inventory'])
   })
 
   const [qtyMap, setQtyMap] = useState({})
+  const [search, setSearch] = useState('')
 
   const setQty = (id, val) => setQtyMap(m => ({ ...m, [id]: val }))
   const getQty = (item) => qtyMap[item.productId] ?? item.quantityOnHand
+
+  const filtered = inventory.filter(item =>
+    (item.productName || '').toLowerCase().includes(search.toLowerCase())
+  )
 
   const badge = (item) => {
     if (item.quantityOnHand === 0) return { label: 'Out of Stock', cls: 'bg-red-100 text-red-700' }
@@ -34,6 +32,15 @@ export default function Inventory() {
 
   return (
     <MerchantLayout title="Inventory">
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by product name…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 w-72 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        />
+      </div>
       {isLoading ? (
         <div className="text-center py-20 text-gray-400">Loading…</div>
       ) : (
@@ -47,13 +54,13 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {inventory.map(item => {
+              {filtered.map(item => {
                 const { label, cls } = badge(item)
                 const isLow = item.quantityOnHand <= item.lowStockThreshold && item.quantityOnHand > 0
                 return (
                   <tr key={item.productId} className={isLow ? 'bg-yellow-50/50' : ''}>
                     <td className="px-4 py-3 font-medium text-gray-800">
-                      {productNameMap[item.productId] || `Product #${item.productId}`}
+                      {item.productName || `Product #${item.productId}`}
                     </td>
                     <td className="px-4 py-3">{item.quantityOnHand}</td>
                     <td className="px-4 py-3 text-gray-500">{item.lowStockThreshold}</td>
