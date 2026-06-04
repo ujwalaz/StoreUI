@@ -13,10 +13,12 @@ customerApi.interceptors.request.use(config => {
 customerApi.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status
+    if (status === 401 || status === 403) {
       const currentPath = window.location.pathname
       if (currentPath !== '/') {
         localStorage.removeItem('customerToken')
+        localStorage.removeItem('cart-storage')
         window.location.href = '/'
       }
     }
