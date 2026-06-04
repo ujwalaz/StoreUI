@@ -32,7 +32,7 @@ export default function PhoneEntry() {
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
         <div className="text-center mb-6">
           <div className="text-4xl mb-2">🛍️</div>
-          <h1 className="text-2xl font-bold text-gray-800">Welcome</h1>
+          <h1 className="text-2xl font-bold text-indigo-700">Grand Fresh</h1>
           <p className="text-gray-500 text-sm mt-1">Enter your mobile number to start shopping</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">

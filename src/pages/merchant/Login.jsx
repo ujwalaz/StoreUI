@@ -74,7 +74,7 @@ export default function MerchantLogin() {
       <div className="hidden lg:flex flex-1 bg-gradient-to-br from-indigo-600 to-purple-700 items-center justify-center">
         <div className="text-white text-center px-12">
           <div className="text-6xl mb-4">📦</div>
-          <h2 className="text-3xl font-bold mb-3">MRP Store Manager</h2>
+          <h2 className="text-3xl font-bold mb-3">Grand Fresh Manager</h2>
           <p className="text-indigo-200 text-lg">Manage products, inventory and orders from one place</p>
         </div>
       </div>
