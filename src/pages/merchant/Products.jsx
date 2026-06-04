@@ -5,11 +5,43 @@ import { getMerchantProducts, createProduct, updateProduct, deleteProduct } from
 
 const EMPTY = { name: '', description: '', sku: '', mrp: '', sellingPrice: '', imageUrl: '', imageUrlBack: '', quantity: '' }
 
+// Boost contrast + convert to grayscale before OCR — dramatically improves Tesseract accuracy
+async function preprocessImage(file) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const MAX = 1600
+      let { width: w, height: h } = img
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX }
+        else { w = Math.round(w * MAX / h); h = MAX }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = w; canvas.height = h
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, w, h)
+      const imgData = ctx.getImageData(0, 0, w, h)
+      const d = imgData.data
+      for (let i = 0; i < d.length; i += 4) {
+        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
+        const contrasted = Math.min(255, Math.max(0, (gray - 128) * 1.8 + 128))
+        d[i] = d[i + 1] = d[i + 2] = contrasted
+      }
+      ctx.putImageData(imgData, 0, 0)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(blob => resolve(blob), 'image/png')
+    }
+    img.src = url
+  })
+}
+
 function extractMRP(text) {
   const patterns = [
     /M\.?R\.?P\.?\s*[:\-]?\s*(?:Rs\.?|INR|₹)?\s*(\d{1,6}(?:[.,]\d{1,2})?)/i,
     /Maximum\s+Retail\s+Price\s*[:\-]?\s*(?:Rs\.?|INR|₹)?\s*(\d{1,6}(?:[.,]\d{1,2})?)/i,
-    /(?:Rs\.?|₹|INR)\s*(\d{1,6}(?:[.,]\d{1,2})?)/
+    /(?:Rs\.?|₹|INR)\s*(\d{1,6}(?:[.,]\d{1,2})?)/,
+    /\b(\d{1,6}(?:[.,]\d{2})?)\s*\/?\s*(?:Rs\.?|₹|INR)/i,
   ]
   for (const pattern of patterns) {
     const match = text.match(pattern)
@@ -18,16 +50,46 @@ function extractMRP(text) {
   return null
 }
 
-function extractProductName(text) {
-  const mrpPattern = /M\.?R\.?P|Maximum\s+Retail|(?:Rs\.?|₹|INR)\s*\d/i
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
-  for (const line of lines) {
-    if (line.length < 3) continue
-    if (mrpPattern.test(line)) continue
-    if (/^[\d.,\s]+$/.test(line)) continue
-    return line
+const NAME_SKIP = [
+  /M\.?R\.?P|Maximum\s+Retail/i,
+  /(?:Rs\.?|₹|INR)\s*\d/,
+  /net\s*(wt|weight|qty|content|vol)/i,
+  /manufactured|marketed|imported|packed|distributed|unit/i,
+  /best\s*before|use\s*by|expiry|mfg|batch\s*no/i,
+  /fssai|lic\.?\s*no|license|reg\.?\s*no|pfa/i,
+  /gst|hsn|inclusive|incl\.|all\s*taxes|tax/i,
+  /customer\s*care|toll\s*free|helpline|www\.|\.com|@/i,
+  /^\s*[\d.,\s%gGkKmMlLmM]+\s*$/,
+]
+
+function extractProductName(words) {
+  // Use word-level confidence data for much better accuracy
+  const candidates = words
+    .filter(w => w.confidence > 55 && w.text.length >= 2 && /[a-zA-Z]{2,}/.test(w.text))
+    .filter(w => !NAME_SKIP.some(p => p.test(w.text)))
+
+  if (!candidates.length) return ''
+
+  // Group words into lines by their bounding box Y position (within 15px = same line)
+  const lines = []
+  for (const word of candidates) {
+    const y = word.bbox?.y0 ?? 0
+    const existing = lines.find(l => Math.abs(l.y - y) < 20)
+    if (existing) { existing.words.push(word) }
+    else lines.push({ y, words: [word] })
   }
-  return ''
+
+  // Score lines: font size (bbox height) is the primary signal — product names are
+  // always the largest text on the label. Confidence and word count are secondary.
+  const scored = lines.map(l => {
+    const avgHeight = l.words.reduce((sum, w) => sum + ((w.bbox?.y1 ?? 0) - (w.bbox?.y0 ?? 0)), 0) / l.words.length
+    const avgConf = l.words.reduce((sum, w) => sum + w.confidence, 0) / l.words.length
+    const text = l.words.map(w => w.text).join(' ')
+    return { text, score: avgHeight * 3 + avgConf * 0.3 + l.words.length * 1.5 }
+  })
+
+  scored.sort((a, b) => b.score - a.score)
+  return scored[0]?.text || ''
 }
 
 export default function Products() {
@@ -73,7 +135,7 @@ export default function Products() {
     const file = e.target.files[0]
     if (!file) return
     setScanning(side)
-    setScanMsg(m => ({ ...m, [side]: 'Loading OCR engine…' }))
+    setScanMsg(m => ({ ...m, [side]: 'Preprocessing image…' }))
 
     const imageField = side === 'front' ? 'imageUrl' : 'imageUrlBack'
     const reader = new FileReader()
@@ -82,20 +144,28 @@ export default function Products() {
 
     try {
       const { createWorker } = await import('tesseract.js')
+      setScanMsg(m => ({ ...m, [side]: 'Loading OCR engine…' }))
+
+      const processedBlob = await preprocessImage(file)
+
       const worker = await createWorker('eng', 1, {
         logger: m => {
           if (m.status === 'recognizing text')
             setScanMsg(msg => ({ ...msg, [side]: `Recognizing… ${Math.round(m.progress * 100)}%` }))
         }
       })
-      const { data } = await worker.recognize(file)
-      await worker.terminate()
-      const text = data.text.trim()
 
-      // Front: primary target = name, bonus = MRP
-      // Back:  primary target = MRP,  bonus = name
+      // PSM 11 = sparse text: best for product labels with mixed layouts
+      await worker.setParameters({ tessedit_pageseg_mode: '11' })
+
+      const { data } = await worker.recognize(processedBlob)
+      await worker.terminate()
+
+      const text = data.text.trim()
+      const words = data.words || []
+
       const mrp = extractMRP(text)
-      const name = extractProductName(text)
+      const name = extractProductName(words)
 
       if (side === 'front') {
         setForm(f => ({
@@ -103,14 +173,14 @@ export default function Products() {
           ...(name && !f.name ? { name } : {}),
           ...(mrp && !f.mrp  ? { mrp }  : {})
         }))
-        setScanMsg(m => ({ ...m, front: name ? '✅ Name detected' : '⚠️ Name not found — fill manually' }))
+        setScanMsg(m => ({ ...m, front: name ? `✅ Name: "${name}"` : '⚠️ Name not found — fill manually' }))
       } else {
         setForm(f => ({
           ...f,
           ...(mrp              ? { mrp }  : {}),
           ...(name && !f.name  ? { name } : {})
         }))
-        setScanMsg(m => ({ ...m, back: mrp ? '✅ MRP detected' : '⚠️ MRP not found — fill manually' }))
+        setScanMsg(m => ({ ...m, back: mrp ? `✅ MRP: ₹${mrp}` : '⚠️ MRP not found — fill manually' }))
       }
     } catch (err) {
       setScanMsg(m => ({ ...m, [side]: '⚠️ Scan failed — please fill manually' }))
