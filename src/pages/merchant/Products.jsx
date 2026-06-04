@@ -37,12 +37,17 @@ export default function Products() {
   const [error, setError] = useState('')
   const [scanning, setScanning] = useState(null) // null | 'front' | 'back'
   const [scanMsg, setScanMsg] = useState({ front: '', back: '' })
+  const [search, setSearch] = useState('')
   const frontInputRef = useRef(null)
   const backInputRef = useRef(null)
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['mProducts'], queryFn: getMerchantProducts
   })
+
+  const filtered = products.filter(p =>
+    p.name?.toLowerCase().includes(search.toLowerCase())
+  )
 
   const save = useMutation({
     mutationFn: (data) => modal.mode === 'add' ? createProduct(data) : updateProduct(modal.data.id, data),
@@ -137,18 +142,29 @@ export default function Products() {
 
   return (
     <MerchantLayout title="Products">
-      <div className="flex justify-end mb-4">
+      <div className="flex flex-col sm:flex-row gap-3 justify-between mb-4">
+        <input
+          type="search"
+          placeholder="Search products by name…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        />
         <button onClick={openAdd}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition">
+          className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition whitespace-nowrap">
           + Add Product
         </button>
       </div>
 
       {isLoading ? (
         <div className="text-center py-20 text-gray-400">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-20 text-gray-400">
+          {search ? 'No products match your search' : 'No products yet'}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {products.map(p => (
+          {filtered.map(p => (
             <div key={p.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               {p.imageUrl || p.imageUrlBack ? (
                 <div className="flex h-36">
@@ -163,7 +179,7 @@ export default function Products() {
                 <div className="w-full h-36 bg-gray-100 flex items-center justify-center text-gray-300 text-xs">No Image</div>
               )}
               <div className="p-3">
-                <p className="font-semibold text-sm text-gray-800 truncate">{p.name}</p>
+                <p className="font-semibold text-sm text-gray-800 truncate">{p.name || '(Unnamed Product)'}</p>
                 {p.sku && <p className="text-xs text-gray-400">SKU: {p.sku}</p>}
                 <p className="text-sm font-bold mt-1">₹{Number(p.sellingPrice).toFixed(2)}
                   <span className="ml-2 text-xs text-gray-400 font-normal line-through">₹{Number(p.mrp).toFixed(2)}</span>

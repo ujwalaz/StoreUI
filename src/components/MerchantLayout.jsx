@@ -1,4 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import merchantApi from '../api/merchantApi'
+
+const getMerchantInfo = () => merchantApi.get('/api/merchant/info').then(r => r.data)
 
 const NAV = [
   { to: '/merchant/dashboard', label: '📊 Dashboard' },
@@ -9,6 +13,7 @@ const NAV = [
 
 export default function MerchantLayout({ children, title }) {
   const navigate = useNavigate()
+  const { data: merchantInfo } = useQuery({ queryKey: ['merchantInfo'], queryFn: getMerchantInfo })
   const logout = () => {
     localStorage.removeItem('merchantToken')
     navigate('/merchant/login')
@@ -17,7 +22,7 @@ export default function MerchantLayout({ children, title }) {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-5 border-b font-bold text-indigo-700 text-lg tracking-tight">MRP Store</div>
+        <div className="px-6 py-4 border-b font-bold text-indigo-700 text-xl">{merchantInfo?.businessName || 'Grand Fresh'}</div>
         <nav className="flex-1 p-3 space-y-1">
           {NAV.map(({ to, label }) => (
             <NavLink key={to} to={to}
