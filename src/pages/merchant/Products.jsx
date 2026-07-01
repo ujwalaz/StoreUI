@@ -39,10 +39,20 @@ async function preprocessImage(file) {
 
 function extractMRP(lines) {
   const patterns = [
+    // Strict: MRP immediately followed by optional currency + digits
     /M\.?R\.?P\.?\s*[:\-]?\s*(?:Rs\.?|INR|₹)?\s*(\d{1,6}(?:[.,]\d{1,2})?)/i,
+    // Flexible: MRP … Rs/₹/INR … digits (handles "MRP (incl. taxes) Rs. 45.00")
+    /M\.?R\.?P\.?[^\n]{0,50}(?:Rs\.?|INR|₹)\s*(\d{1,6}(?:[.,]\d{1,2})?)/i,
+    // "Maximum Retail Price" spelled out
     /Maximum\s+Retail\s+Price\s*[:\-]?\s*(?:Rs\.?|INR|₹)?\s*(\d{1,6}(?:[.,]\d{1,2})?)/i,
+    // Currency symbol/prefix before digits (case-sensitive ₹, INR; Rs with dot)
     /(?:Rs\.?|₹|INR)\s*(\d{1,6}(?:[.,]\d{1,2})?)/,
+    // Rs (case-insensitive, no dot required) — catches "RS 45", "rs45"
+    /\bRs\.?\s*(\d{1,6}(?:[.,]\d{1,2})?)/i,
+    // Digits then currency suffix
     /\b(\d{1,6}(?:[.,]\d{2})?)\s*\/?\s*(?:Rs\.?|₹|INR)/i,
+    // Lowest priority: bare number with exactly 2 decimal places e.g. "45.00"
+    /\b(\d{1,6}\.\d{2})\b/,
   ]
   const fullText = lines.map(l => l.text).join('\n')
   for (const pattern of patterns) {
@@ -98,13 +108,13 @@ export default function Products() {
 
   const save = useMutation({
     mutationFn: (data) => modal.mode === 'add' ? createProduct(data) : updateProduct(modal.data.id, data),
-    onSuccess: () => { qc.invalidateQueries(['mProducts']); closeModal() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['mProducts'] }); closeModal() },
     onError: (err) => setError(err.response?.data?.message || 'Failed to save product')
   })
 
   const remove = useMutation({
     mutationFn: deleteProduct,
-    onSuccess: () => qc.invalidateQueries(['mProducts'])
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mProducts'] })
   })
 
   const openAdd = () => { setForm(EMPTY); setError(''); setScanMsg({ front: '', back: '' }); setModal({ mode: 'add' }) }
@@ -145,8 +155,8 @@ export default function Products() {
       if (side === 'front') {
         setForm(f => ({
           ...f,
-          ...(name && !f.name ? { name } : {}),
-          ...(mrp && !f.mrp  ? { mrp }  : {})
+          ...(name ? { name } : {}),           // always update name on re-scan
+          ...(mrp && !f.mrp ? { mrp } : {})
         }))
         setScanMsg(m => ({ ...m, front: name ? `✅ Name: "${name}"` : '⚠️ Name not found — fill manually' }))
       } else {
