@@ -22,9 +22,13 @@ export default function Shop() {
     queryFn: getMerchantInfo
   })
 
-  const filtered = products.filter(p =>
-    p.name?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = products
+    .filter(p => p.name?.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      const aOut = (a.quantity ?? 0) <= 0
+      const bOut = (b.quantity ?? 0) <= 0
+      return aOut === bOut ? 0 : aOut ? 1 : -1
+    })
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
