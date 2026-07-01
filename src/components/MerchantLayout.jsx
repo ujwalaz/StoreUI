@@ -14,7 +14,7 @@ const NAV = [
 
 export default function MerchantLayout({ children, title }) {
   const navigate = useNavigate()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768)
   const { data: merchantInfo } = useQuery({ queryKey: ['merchantInfo'], queryFn: getMerchantInfo })
   const logout = () => {
     localStorage.removeItem('merchantToken')
@@ -23,7 +23,7 @@ export default function MerchantLayout({ children, title }) {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <aside className={`${collapsed ? 'w-14' : 'w-56'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300 shrink-0`}>
+      <aside className={`${collapsed ? 'w-14' : 'w-56'} bg-white border-r border-gray-200 flex flex-col transition-all duration-300 shrink-0 h-screen sticky top-0`}>
         {/* Header */}
         <div className="px-3 py-4 border-b flex items-center justify-between gap-2 min-h-[57px]">
           {!collapsed && (
@@ -41,7 +41,7 @@ export default function MerchantLayout({ children, title }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-2 space-y-1">
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
           {NAV.map(({ to, icon, label }) => (
             <NavLink key={to} to={to} title={collapsed ? label : undefined}
               className={({ isActive }) =>
