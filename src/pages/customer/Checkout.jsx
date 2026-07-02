@@ -78,6 +78,22 @@ export default function Checkout() {
                     <span className="font-medium">₹{(Number(i.sellingPrice) * i.quantity).toFixed(2)}</span>
                   </li>
                 ))}
+                {(() => {
+                  const totalMrp = items.reduce((sum, i) => sum + Number(i.mrp) * i.quantity, 0)
+                  const savings = totalMrp - getTotal()
+                  return savings > 0 ? (
+                    <>
+                      <li className="border-t pt-2 flex justify-between text-gray-400 line-through text-xs">
+                        <span>MRP Total</span>
+                        <span>₹{totalMrp.toFixed(2)}</span>
+                      </li>
+                      <li className="flex justify-between text-green-600 font-medium">
+                        <span>Total Savings</span>
+                        <span>−₹{savings.toFixed(2)}</span>
+                      </li>
+                    </>
+                  ) : null
+                })()}
                 <li className="border-t pt-2 flex justify-between font-bold text-gray-800">
                   <span>Total</span>
                   <span>₹{getTotal().toFixed(2)}</span>
