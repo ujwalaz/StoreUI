@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import merchantApi from '../api/merchantApi'
+import NotificationBell from './NotificationBell'
 
 const getMerchantInfo = () => merchantApi.get('/api/merchant/info').then(r => r.data)
 
@@ -67,8 +68,9 @@ export default function MerchantLayout({ children, title }) {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b px-6 py-4">
+        <header className="bg-white border-b px-6 py-4 flex items-center justify-between">
           <h1 className="font-bold text-xl text-gray-800">{title}</h1>
+          <NotificationBell />
         </header>
         <div className="flex-1 p-6 overflow-auto">{children}</div>
       </main>
