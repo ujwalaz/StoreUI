@@ -16,9 +16,9 @@ export default function Dashboard() {
 
   const tiles = [
     { label: 'Active Products', value: products.length, to: '/merchant/products', color: 'bg-indigo-50 text-indigo-700' },
-    { label: 'Low Stock Items', value: lowStock.length, to: '/merchant/inventory', color: 'bg-yellow-50 text-yellow-700' },
-    { label: 'Out of Stock', value: outOfStock, to: '/merchant/inventory', color: 'bg-red-50 text-red-700' },
-    { label: 'Pending Orders', value: pending, to: '/merchant/orders', color: 'bg-orange-50 text-orange-700' },
+    { label: 'Low Stock Items', value: lowStock.length, to: '/merchant/inventory?status=low', color: 'bg-yellow-50 text-yellow-700' },
+    { label: 'Out of Stock', value: outOfStock, to: '/merchant/inventory?status=out', color: 'bg-red-50 text-red-700' },
+    { label: 'Pending Orders', value: pending, to: '/merchant/orders?tab=Pending', color: 'bg-orange-50 text-orange-700' },
     { label: 'Total Orders', value: orders.length, to: '/merchant/orders', color: 'bg-green-50 text-green-700' },
   ]
 
