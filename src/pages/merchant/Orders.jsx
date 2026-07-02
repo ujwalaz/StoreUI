@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import MerchantLayout from '../../components/MerchantLayout'
 import StatusBadge from '../../components/StatusBadge'
@@ -14,7 +15,11 @@ const NEXT_STATUS = {
 
 export default function Orders() {
   const qc = useQueryClient()
-  const [tab, setTab] = useState('All')
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState(() => {
+    const t = searchParams.get('tab')
+    return TABS.includes(t) ? t : 'All'
+  })
   const status = tab === 'All' ? undefined : tab.toLowerCase()
 
   const { data: orders = [], isLoading } = useQuery({
