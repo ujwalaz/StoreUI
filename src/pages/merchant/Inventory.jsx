@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import MerchantLayout from '../../components/MerchantLayout'
 import { getInventory, updateInventory } from '../../api/inventory'
@@ -14,25 +15,37 @@ export default function Inventory() {
     onSuccess: () => qc.invalidateQueries(['inventory'])
   })
 
+  const [searchParams] = useSearchParams()
   const [qtyMap, setQtyMap] = useState({})
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'all')
 
   const setQty = (id, val) => setQtyMap(m => ({ ...m, [id]: val }))
   const getQty = (item) => qtyMap[item.productId] ?? item.quantityOnHand
 
-  const filtered = inventory.filter(item =>
-    (item.productName || '').toLowerCase().includes(search.toLowerCase())
-  )
+  const getStatus = (item) => {
+    if (item.quantityOnHand === 0) return 'out'
+    if (item.quantityOnHand <= item.lowStockThreshold) return 'low'
+    return 'in'
+  }
+
+  const filtered = inventory.filter(item => {
+    const matchesName = (item.productName || '').toLowerCase().includes(search.toLowerCase())
+    const status = getStatus(item)
+    const matchesStatus = statusFilter === 'all' || statusFilter === status
+    return matchesName && matchesStatus
+  })
 
   const badge = (item) => {
-    if (item.quantityOnHand === 0) return { label: 'Out of Stock', cls: 'bg-red-100 text-red-700' }
-    if (item.quantityOnHand <= item.lowStockThreshold) return { label: 'Low Stock', cls: 'bg-yellow-100 text-yellow-700' }
+    const status = getStatus(item)
+    if (status === 'out') return { label: 'Out of Stock', cls: 'bg-red-100 text-red-700' }
+    if (status === 'low') return { label: 'Low Stock', cls: 'bg-yellow-100 text-yellow-700' }
     return { label: 'In Stock', cls: 'bg-green-100 text-green-700' }
   }
 
   return (
     <MerchantLayout title="Inventory">
-      <div className="mb-4">
+      <div className="mb-4 flex gap-3 flex-wrap items-center">
         <input
           type="text"
           placeholder="Search by product name…"
@@ -40,6 +53,16 @@ export default function Inventory() {
           onChange={e => setSearch(e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-2 w-72 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
         />
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        >
+          <option value="all">All Status</option>
+          <option value="in">In Stock</option>
+          <option value="low">Low Stock</option>
+          <option value="out">Out of Stock</option>
+        </select>
       </div>
       {isLoading ? (
         <div className="text-center py-20 text-gray-400">Loading…</div>
