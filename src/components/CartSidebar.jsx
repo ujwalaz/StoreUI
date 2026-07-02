@@ -47,6 +47,22 @@ export default function CartSidebar({ onClose }) {
 
       {items.length > 0 && (
         <div className="p-4 border-t bg-gray-50">
+          {(() => {
+            const totalMrp = items.reduce((sum, i) => sum + Number(i.mrp) * i.quantity, 0)
+            const savings = totalMrp - getTotal()
+            return savings > 0 ? (
+              <div className="mb-2 space-y-1">
+                <div className="flex justify-between text-sm text-gray-400 line-through">
+                  <span>MRP Total</span>
+                  <span>₹{totalMrp.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-medium text-green-600">
+                  <span>You save</span>
+                  <span>−₹{savings.toFixed(2)}</span>
+                </div>
+              </div>
+            ) : null
+          })()}
           <div className="flex justify-between font-bold text-base mb-3">
             <span>Total</span>
             <span>₹{getTotal().toFixed(2)}</span>
