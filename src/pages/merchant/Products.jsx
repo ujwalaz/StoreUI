@@ -6,7 +6,6 @@ import { getMerchantProducts, createProduct, updateProduct, deleteProduct } from
 
 const EMPTY = { name: '', description: '', sku: '', mrp: '', sellingPrice: '', imageUrl: '', imageUrlBack: '', quantity: '' }
 
-// Resize + contrast boost before sending to Azure Vision
 async function preprocessImage(file) {
   return new Promise((resolve) => {
     const img = new Image()
@@ -39,19 +38,12 @@ async function preprocessImage(file) {
 
 function extractMRP(lines) {
   const patterns = [
-    // Strict: MRP immediately followed by optional currency + digits
     /M\.?R\.?P\.?\s*[:\-]?\s*(?:Rs\.?|INR|₹)?\s*(\d{1,6}(?:[.,]\d{1,2})?)/i,
-    // Flexible: MRP … Rs/₹/INR … digits (handles "MRP (incl. taxes) Rs. 45.00")
     /M\.?R\.?P\.?[^\n]{0,50}(?:Rs\.?|INR|₹)\s*(\d{1,6}(?:[.,]\d{1,2})?)/i,
-    // "Maximum Retail Price" spelled out
     /Maximum\s+Retail\s+Price\s*[:\-]?\s*(?:Rs\.?|INR|₹)?\s*(\d{1,6}(?:[.,]\d{1,2})?)/i,
-    // Currency symbol/prefix before digits (case-sensitive ₹, INR; Rs with dot)
     /(?:Rs\.?|₹|INR)\s*(\d{1,6}(?:[.,]\d{1,2})?)/,
-    // Rs (case-insensitive, no dot required) — catches "RS 45", "rs45"
     /\bRs\.?\s*(\d{1,6}(?:[.,]\d{1,2})?)/i,
-    // Digits then currency suffix
     /\b(\d{1,6}(?:[.,]\d{2})?)\s*\/?\s*(?:Rs\.?|₹|INR)/i,
-    // Lowest priority: bare number with exactly 2 decimal places e.g. "45.00"
     /\b(\d{1,6}\.\d{2})\b/,
   ]
   const fullText = lines.map(l => l.text).join('\n')
@@ -74,7 +66,6 @@ const NAME_SKIP = [
   /^\s*[\d.,\s%gGkKmMlL]+\s*$/,
 ]
 
-// Azure Vision returns line height (bounding box) — biggest text = product name
 function extractProductName(lines) {
   const candidates = lines.filter(l =>
     l.height > 0 &&
@@ -89,10 +80,10 @@ function extractProductName(lines) {
 
 export default function Products() {
   const qc = useQueryClient()
-  const [modal, setModal] = useState(null) // null | { mode: 'add'|'edit', data }
+  const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [error, setError] = useState('')
-  const [scanning, setScanning] = useState(null) // null | 'front' | 'back'
+  const [scanning, setScanning] = useState(null)
   const [scanMsg, setScanMsg] = useState({ front: '', back: '' })
   const [search, setSearch] = useState('')
   const frontInputRef = useRef(null)
@@ -119,9 +110,16 @@ export default function Products() {
 
   const openAdd = () => { setForm(EMPTY); setError(''); setScanMsg({ front: '', back: '' }); setModal({ mode: 'add' }) }
   const openEdit = (p) => {
-    setForm({ name: p.name, description: p.description || '', sku: p.sku || '',
-      mrp: p.mrp, sellingPrice: p.sellingPrice, imageUrl: p.imageUrl || '',
-      imageUrlBack: p.imageUrlBack || '' })
+    setForm({
+      name: p.name,
+      description: p.description || '',
+      sku: p.sku || '',
+      mrp: p.mrp,
+      sellingPrice: p.sellingPrice,
+      imageUrl: p.imageUrl || '',
+      imageUrlBack: p.imageUrlBack || '',
+      quantity: p.quantity ?? '',
+    })
     setError(''); setScanMsg({ front: '', back: '' }); setModal({ mode: 'edit', data: p })
   }
   const closeModal = () => setModal(null)
@@ -155,14 +153,14 @@ export default function Products() {
       if (side === 'front') {
         setForm(f => ({
           ...f,
-          ...(name ? { name } : {}),           // always update name on re-scan
+          ...(name ? { name } : {}),
           ...(mrp && !f.mrp ? { mrp } : {})
         }))
         setScanMsg(m => ({ ...m, front: name ? `✅ Name: "${name}"` : '⚠️ Name not found — fill manually' }))
       } else {
         setForm(f => ({
           ...f,
-          ...(mrp             ? { mrp }  : {}),
+          ...(mrp ? { mrp } : {}),
           ...(name && !f.name ? { name } : {})
         }))
         setScanMsg(m => ({ ...m, back: mrp ? `✅ MRP: ₹${mrp}` : '⚠️ MRP not found — fill manually' }))
@@ -197,32 +195,34 @@ export default function Products() {
 
   return (
     <MerchantLayout title="Products">
-      <div className="flex flex-col sm:flex-row gap-3 justify-between mb-4">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <input
           type="search"
           placeholder="Search products by name…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
         />
-        <button onClick={openAdd}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition whitespace-nowrap">
+        <button
+          onClick={openAdd}
+          className="rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:from-indigo-700 hover:to-purple-700"
+        >
           + Add Product
         </button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-20 text-gray-400">Loading…</div>
+        <div className="py-20 text-center text-gray-400">Loading…</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">
+        <div className="rounded-3xl border border-dashed border-gray-200 bg-white py-20 text-center text-gray-400 shadow-sm">
           {search ? 'No products match your search' : 'No products yet'}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map(p => (
-            <div key={p.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div key={p.id} className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md">
               {p.imageUrl || p.imageUrlBack ? (
-                <div className="flex h-36">
+                <div className="flex h-40 overflow-hidden bg-slate-50">
                   {p.imageUrl
                     ? <img src={p.imageUrl} alt="front" className={`object-cover ${p.imageUrlBack ? 'w-1/2' : 'w-full'}`} />
                     : p.imageUrlBack && <div className="w-1/2 bg-gray-100" />}
@@ -231,20 +231,39 @@ export default function Products() {
                   )}
                 </div>
               ) : (
-                <div className="w-full h-36 bg-gray-100 flex items-center justify-center text-gray-300 text-xs">No Image</div>
+                <div className="flex h-40 w-full items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-100 text-xs text-gray-400">No Image</div>
               )}
-              <div className="p-3">
-                <p className="font-semibold text-sm text-gray-800 truncate">{p.name || '(Unnamed Product)'}</p>
-                {p.sku && <p className="text-xs text-gray-400">SKU: {p.sku}</p>}
-                <p className="text-sm font-bold mt-1">₹{Number(p.sellingPrice).toFixed(2)}
-                  <span className="ml-2 text-xs text-gray-400 font-normal line-through">₹{Number(p.mrp).toFixed(2)}</span>
+
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold text-gray-800">{p.name || '(Unnamed Product)'}</p>
+                    {p.sku && <p className="mt-1 text-xs text-gray-400">SKU: {p.sku}</p>}
+                  </div>
+                  <StockBadge quantity={p.quantity ?? 0} />
+                </div>
+
+                <p className="mt-3 text-lg font-bold text-gray-900">
+                  ₹{Number(p.sellingPrice).toFixed(2)}
+                  <span className="ml-2 text-sm font-normal text-gray-400 line-through">₹{Number(p.mrp).toFixed(2)}</span>
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">Stock: {p.quantity ?? 0}</p>
-                <div className="flex gap-2 mt-3">
-                  <button onClick={() => openEdit(p)}
-                    className="flex-1 text-xs border border-indigo-300 text-indigo-600 py-1.5 rounded-lg hover:bg-indigo-50 transition">Edit</button>
-                  <button onClick={() => { if (confirm('Delete this product?')) remove.mutate(p.id) }}
-                    className="flex-1 text-xs border border-red-300 text-red-500 py-1.5 rounded-lg hover:bg-red-50 transition">Delete</button>
+                <p className="mt-1 text-sm text-gray-500">Stock on hand: {p.quantity ?? 0}</p>
+
+                <div className="mt-4 flex items-center gap-2">
+                  <button
+                    onClick={() => openEdit(p)}
+                    title="Edit product"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-indigo-200 text-indigo-600 transition hover:bg-indigo-50"
+                  >
+                    <EditIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => { if (confirm('Delete this product?')) remove.mutate(p.id) }}
+                    title="Delete product"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200 text-rose-500 transition hover:bg-rose-50"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -252,83 +271,97 @@ export default function Products() {
         </div>
       )}
 
-      {/* Modal */}
       {modal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="font-bold text-lg mb-4">{modal.mode === 'add' ? 'Add Product' : 'Edit Product'}</h2>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              {modal.mode === 'add' && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Scan Product Label</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Front side */}
-                    <div>
-                      <input ref={frontInputRef} type="file" accept="image/*" capture="environment"
-                        className="hidden" onChange={handleScan('front')} />
-                      <button type="button" disabled={scanning !== null}
-                        onClick={() => frontInputRef.current?.click()}
-                        className="w-full flex flex-col items-center gap-1 border-2 border-dashed border-indigo-300 text-indigo-600 py-3 rounded-xl text-xs font-medium hover:bg-indigo-50 transition disabled:opacity-60">
-                        <span className="text-lg">{scanning === 'front' ? '🔍' : '📷'}</span>
-                        <span>{scanning === 'front' ? 'Scanning…' : 'Front Side'}</span>
-                        <span className="text-gray-400 font-normal">Product Name</span>
-                      </button>
-                      {form.imageUrl && <img src={form.imageUrl} className="mt-1 h-16 w-full object-cover rounded-lg" />}
-                      {scanMsg.front && <p className="text-xs text-center text-gray-500 mt-0.5">{scanMsg.front}</p>}
-                    </div>
-                    {/* Back side */}
-                    <div>
-                      <input ref={backInputRef} type="file" accept="image/*" capture="environment"
-                        className="hidden" onChange={handleScan('back')} />
-                      <button type="button" disabled={scanning !== null}
-                        onClick={() => backInputRef.current?.click()}
-                        className="w-full flex flex-col items-center gap-1 border-2 border-dashed border-orange-300 text-orange-600 py-3 rounded-xl text-xs font-medium hover:bg-orange-50 transition disabled:opacity-60">
-                        <span className="text-lg">{scanning === 'back' ? '🔍' : '📷'}</span>
-                        <span>{scanning === 'back' ? 'Scanning…' : 'Back Side'}</span>
-                        <span className="text-gray-400 font-normal">MRP Label</span>
-                      </button>
-                      {form.imageUrlBack && <img src={form.imageUrlBack} className="mt-1 h-16 w-full object-cover rounded-lg" />}
-                      {scanMsg.back && <p className="text-xs text-center text-gray-500 mt-0.5">{scanMsg.back}</p>}
-                    </div>
-                  </div>
-                </div>
-              )}
-              <FInput label="Name *" value={form.name} onChange={set('name')} required />
-              <FInput label="Description" value={form.description} onChange={set('description')} />
-              <FInput label="SKU" value={form.sku} onChange={set('sku')} />
-              <div className="grid grid-cols-2 gap-3">
-                <FInput label="MRP (₹) *" type="number" step="0.01" min="0" value={form.mrp} onChange={set('mrp')} required />
-                <FInput label="Selling Price (₹)" type="number" step="0.01" min="0" value={form.sellingPrice} onChange={set('sellingPrice')} />
-              </div>
-              {modal.mode === 'add' && (
-                <FInput label="Initial Stock" type="number" min="0" step="1" value={form.quantity} onChange={set('quantity')} />
-              )}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {modal.mode === 'add' ? 'Or upload images manually' : 'Product Images'}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Front</p>
-                    <input type="file" accept="image/*" onChange={handleImage('imageUrl')}
-                      className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-600" />
-                    {form.imageUrl && <img src={form.imageUrl} alt="front" className="mt-1 h-16 w-full object-cover rounded-lg" />}
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Back</p>
-                    <input type="file" accept="image/*" onChange={handleImage('imageUrlBack')}
-                      className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:bg-orange-50 file:text-orange-600" />
-                    {form.imageUrlBack && <img src={form.imageUrlBack} alt="back" className="mt-1 h-16 w-full object-cover rounded-lg" />}
-                  </div>
-                </div>
+                <h2 className="text-xl font-bold text-gray-900">{modal.mode === 'add' ? 'Add Product' : 'Edit Product'}</h2>
+                <p className="text-sm text-gray-500">Fill in product details to keep your catalogue polished and up to date.</p>
               </div>
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={closeModal}
-                  className="flex-1 border border-gray-300 py-2 rounded-xl text-sm hover:bg-gray-50 transition">Cancel</button>
-                <button type="submit" disabled={save.isPending}
-                  className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-indigo-700 transition disabled:opacity-60">
-                  {save.isPending ? 'Saving…' : 'Save'}
+              <button onClick={closeModal} className="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">✕</button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {modal.mode === 'add' && (
+                <ModalSection title="Smart Scan">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <input ref={frontInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScan('front')} />
+                      <button
+                        type="button"
+                        disabled={scanning !== null}
+                        onClick={() => frontInputRef.current?.click()}
+                        className="flex w-full flex-col items-center gap-1 rounded-2xl border-2 border-dashed border-indigo-300 py-4 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-60"
+                      >
+                        <span className="text-xl">{scanning === 'front' ? '🔍' : '📷'}</span>
+                        <span>{scanning === 'front' ? 'Scanning…' : 'Front Side'}</span>
+                        <span className="text-xs font-normal text-gray-400">Product name</span>
+                      </button>
+                      {form.imageUrl && <img src={form.imageUrl} className="mt-2 h-24 w-full rounded-2xl object-cover" />}
+                      {scanMsg.front && <p className="mt-1 text-xs text-gray-500">{scanMsg.front}</p>}
+                    </div>
+
+                    <div>
+                      <input ref={backInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleScan('back')} />
+                      <button
+                        type="button"
+                        disabled={scanning !== null}
+                        onClick={() => backInputRef.current?.click()}
+                        className="flex w-full flex-col items-center gap-1 rounded-2xl border-2 border-dashed border-amber-300 py-4 text-sm font-medium text-amber-600 transition hover:bg-amber-50 disabled:opacity-60"
+                      >
+                        <span className="text-xl">{scanning === 'back' ? '🔍' : '📷'}</span>
+                        <span>{scanning === 'back' ? 'Scanning…' : 'Back Side'}</span>
+                        <span className="text-xs font-normal text-gray-400">MRP label</span>
+                      </button>
+                      {form.imageUrlBack && <img src={form.imageUrlBack} className="mt-2 h-24 w-full rounded-2xl object-cover" />}
+                      {scanMsg.back && <p className="mt-1 text-xs text-gray-500">{scanMsg.back}</p>}
+                    </div>
+                  </div>
+                </ModalSection>
+              )}
+
+              <ModalSection title="Product Details">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <FInput label="Name *" value={form.name} onChange={set('name')} required />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FInput label="Description" value={form.description} onChange={set('description')} />
+                  </div>
+                  <FInput label="SKU" value={form.sku} onChange={set('sku')} />
+                  {modal.mode === 'add' && (
+                    <FInput label="Initial Stock" type="number" min="0" step="1" value={form.quantity} onChange={set('quantity')} />
+                  )}
+                </div>
+              </ModalSection>
+
+              <ModalSection title="Pricing">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <FInput label="MRP (₹) *" type="number" step="0.01" min="0" value={form.mrp} onChange={set('mrp')} required />
+                  <FInput label="Selling Price (₹)" type="number" step="0.01" min="0" value={form.sellingPrice} onChange={set('sellingPrice')} />
+                </div>
+              </ModalSection>
+
+              <ModalSection title="Product Images">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <UploadField label="Front" onChange={handleImage('imageUrl')} preview={form.imageUrl} tone="file:bg-indigo-50 file:text-indigo-600" />
+                  <UploadField label="Back" onChange={handleImage('imageUrlBack')} preview={form.imageUrlBack} tone="file:bg-amber-50 file:text-amber-600" />
+                </div>
+              </ModalSection>
+
+              {error && <p className="text-sm text-rose-500">{error}</p>}
+
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                <button type="button" onClick={closeModal} className="flex-1 rounded-2xl border border-gray-200 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={save.isPending}
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-60"
+                >
+                  {save.isPending ? 'Saving…' : 'Save Product'}
                 </button>
               </div>
             </form>
@@ -339,11 +372,61 @@ export default function Products() {
   )
 }
 
+function ModalSection({ title, children }) {
+  return (
+    <section className="rounded-3xl border border-gray-100 bg-slate-50 p-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">{title}</p>
+      {children}
+    </section>
+  )
+}
+
+function UploadField({ label, onChange, preview, tone }) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-semibold text-gray-700">{label}</p>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={onChange}
+        className={`w-full text-xs text-gray-500 file:mr-2 file:rounded-xl file:border-0 file:px-3 file:py-2 ${tone}`}
+      />
+      {preview && <img src={preview} alt={label} className="mt-2 h-24 w-full rounded-2xl object-cover" />}
+    </div>
+  )
+}
+
 function FInput({ label, ...props }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <input {...props} className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <label className="mb-1.5 block text-sm font-semibold text-gray-700">{label}</label>
+      <input {...props} className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
     </div>
+  )
+}
+
+function StockBadge({ quantity }) {
+  if (quantity <= 0) return <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">Out of stock</span>
+  if (quantity <= 5) return <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Low stock</span>
+  return <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">In stock</span>
+}
+
+function iconProps(className) {
+  return { xmlns: 'http://www.w3.org/2000/svg', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', className }
+}
+
+function EditIcon({ className }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20Zm0 0h4.5" />
+    </svg>
+  )
+}
+
+function TrashIcon({ className }) {
+  return (
+    <svg {...iconProps(className)}>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 7h16M10 11v5m4-5v5M6 7l1 12h10l1-12M9 7V4h6v3" />
+    </svg>
   )
 }

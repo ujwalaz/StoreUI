@@ -20,7 +20,7 @@ export default function Inventory() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'all')
 
-  const setQty = (id, val) => setQtyMap(m => ({ ...m, [id]: val }))
+  const setQty = (id, val) => setQtyMap(m => ({ ...m, [id]: Math.max(0, val) }))
   const getQty = (item) => qtyMap[item.productId] ?? item.quantityOnHand
 
   const getStatus = (item) => {
@@ -36,27 +36,36 @@ export default function Inventory() {
     return matchesName && matchesStatus
   })
 
+  const lowStockCount = inventory.filter(item => getStatus(item) === 'low').length
+  const outOfStockCount = inventory.filter(item => getStatus(item) === 'out').length
+
   const badge = (item) => {
     const status = getStatus(item)
-    if (status === 'out') return { label: 'Out of Stock', cls: 'bg-red-100 text-red-700' }
-    if (status === 'low') return { label: 'Low Stock', cls: 'bg-yellow-100 text-yellow-700' }
-    return { label: 'In Stock', cls: 'bg-green-100 text-green-700' }
+    if (status === 'out') return { label: 'Out of Stock', cls: 'bg-rose-100 text-rose-700' }
+    if (status === 'low') return { label: 'Low Stock', cls: 'bg-amber-100 text-amber-700' }
+    return { label: 'In Stock', cls: 'bg-emerald-100 text-emerald-700' }
   }
 
   return (
     <MerchantLayout title="Inventory">
-      <div className="mb-4 flex gap-3 flex-wrap items-center">
+      <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <SummaryCard label="Total Products" value={inventory.length} tone="from-indigo-500 to-purple-500" />
+        <SummaryCard label="Low Stock Count" value={lowStockCount} tone="from-amber-400 to-orange-500" />
+        <SummaryCard label="Out of Stock" value={outOfStockCount} tone="from-rose-400 to-rose-500" />
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
           type="text"
           placeholder="Search by product name…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 w-72 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="w-72 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
         />
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
         >
           <option value="all">All Status</option>
           <option value="in">In Stock</option>
@@ -64,40 +73,62 @@ export default function Inventory() {
           <option value="out">Out of Stock</option>
         </select>
       </div>
+
       {isLoading ? (
-        <div className="text-center py-20 text-gray-400">Loading…</div>
+        <div className="py-20 text-center text-gray-400">Loading…</div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+            <thead className="border-b bg-slate-50">
               <tr>
                 {['Product', 'Stock', 'Threshold', 'Status', 'Update'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-100">
               {filtered.map(item => {
                 const { label, cls } = badge(item)
                 const isLow = item.quantityOnHand <= item.lowStockThreshold && item.quantityOnHand > 0
                 return (
-                  <tr key={item.productId} className={isLow ? 'bg-yellow-50/50' : ''}>
-                    <td className="px-4 py-3 font-medium text-gray-800">
+                  <tr key={item.productId} className={`${isLow ? 'bg-amber-50/40' : 'bg-white'} hover:bg-gray-50`}>
+                    <td className="px-4 py-4 font-medium text-gray-800">
                       {item.productName || `Product #${item.productId}`}
                     </td>
-                    <td className="px-4 py-3">{item.quantityOnHand}</td>
-                    <td className="px-4 py-3 text-gray-500">{item.lowStockThreshold}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>{label}</span>
+                    <td className="px-4 py-4 text-gray-700">{item.quantityOnHand}</td>
+                    <td className="px-4 py-4 text-gray-500">{item.lowStockThreshold}</td>
+                    <td className="px-4 py-4">
+                      <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>{label}</span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <input type="number" min="0" value={getQty(item)}
-                          onChange={e => setQty(item.productId, Number(e.target.value))}
-                          className="border border-gray-300 rounded-lg px-2 py-1 w-20 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+                    <td className="px-4 py-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center rounded-2xl border border-gray-200 bg-white shadow-sm">
+                          <button
+                            type="button"
+                            onClick={() => setQty(item.productId, getQty(item) - 1)}
+                            className="px-3 py-2 text-indigo-600 transition hover:bg-indigo-50"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            value={getQty(item)}
+                            onChange={e => setQty(item.productId, Number(e.target.value))}
+                            className="w-20 border-x border-gray-200 px-2 py-2 text-center text-sm outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setQty(item.productId, getQty(item) + 1)}
+                            className="px-3 py-2 text-indigo-600 transition hover:bg-indigo-50"
+                          >
+                            +
+                          </button>
+                        </div>
                         <button
                           onClick={() => update.mutate({ productId: item.productId, quantity: getQty(item) })}
-                          className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">
+                          className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
+                        >
                           Save
                         </button>
                       </div>
@@ -110,5 +141,16 @@ export default function Inventory() {
         </div>
       )}
     </MerchantLayout>
+  )
+}
+
+function SummaryCard({ label, value, tone }) {
+  return (
+    <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className={`mb-4 inline-flex rounded-2xl bg-gradient-to-r px-4 py-2 text-sm font-semibold text-white ${tone}`}>
+        {label}
+      </div>
+      <p className="text-3xl font-bold text-gray-900">{value}</p>
+    </div>
   )
 }
