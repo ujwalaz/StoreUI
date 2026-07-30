@@ -3,8 +3,10 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import MerchantLayout from '../../components/MerchantLayout'
 import { getInventory, updateInventory } from '../../api/inventory'
+import { useT } from '../../i18n/useT'
 
 export default function Inventory() {
+  const t = useT()
   const qc = useQueryClient()
   const { data: inventory = [], isLoading } = useQuery({
     queryKey: ['inventory'], queryFn: getInventory
@@ -41,23 +43,23 @@ export default function Inventory() {
 
   const badge = (item) => {
     const status = getStatus(item)
-    if (status === 'out') return { label: 'Out of Stock', cls: 'bg-rose-100 text-rose-700' }
-    if (status === 'low') return { label: 'Low Stock', cls: 'bg-amber-100 text-amber-700' }
-    return { label: 'In Stock', cls: 'bg-emerald-100 text-emerald-700' }
+    if (status === 'out') return { label: t('inv.badgeOut'), cls: 'bg-rose-100 text-rose-700' }
+    if (status === 'low') return { label: t('inv.badgeLow'), cls: 'bg-amber-100 text-amber-700' }
+    return { label: t('inv.badgeIn'), cls: 'bg-emerald-100 text-emerald-700' }
   }
 
   return (
-    <MerchantLayout title="Inventory">
+    <MerchantLayout title={t('nav.inventory')}>
       <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SummaryCard label="Total Products" value={inventory.length} tone="from-indigo-500 to-purple-500" />
-        <SummaryCard label="Low Stock Count" value={lowStockCount} tone="from-amber-400 to-orange-500" />
-        <SummaryCard label="Out of Stock" value={outOfStockCount} tone="from-rose-400 to-rose-500" />
+        <SummaryCard label={t('inv.totalProducts')} value={inventory.length} tone="from-indigo-500 to-purple-500" />
+        <SummaryCard label={t('inv.lowStockCount')} value={lowStockCount} tone="from-amber-400 to-orange-500" />
+        <SummaryCard label={t('inv.outOfStock')} value={outOfStockCount} tone="from-rose-400 to-rose-500" />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
           type="text"
-          placeholder="Search by product name…"
+          placeholder={t('inv.searchPlaceholder')}
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="w-72 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
@@ -67,21 +69,21 @@ export default function Inventory() {
           onChange={e => setStatusFilter(e.target.value)}
           className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
         >
-          <option value="all">All Status</option>
-          <option value="in">In Stock</option>
-          <option value="low">Low Stock</option>
-          <option value="out">Out of Stock</option>
+          <option value="all">{t('inv.filterAll')}</option>
+          <option value="in">{t('inv.filterIn')}</option>
+          <option value="low">{t('inv.filterLow')}</option>
+          <option value="out">{t('inv.filterOut')}</option>
         </select>
       </div>
 
       {isLoading ? (
-        <div className="py-20 text-center text-gray-400">Loading…</div>
+        <div className="py-20 text-center text-gray-400">{t('inv.loading')}</div>
       ) : (
         <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead className="border-b bg-slate-50">
               <tr>
-                {['Product', 'Stock', 'Threshold', 'Status', 'Update'].map(h => (
+                {[t('inv.colProduct'), t('inv.colStock'), t('inv.colThreshold'), t('inv.colStatus'), t('inv.colUpdate')].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{h}</th>
                 ))}
               </tr>
@@ -129,7 +131,7 @@ export default function Inventory() {
                           onClick={() => update.mutate({ productId: item.productId, quantity: getQty(item) })}
                           className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
                         >
-                          Save
+                          {t('inv.save')}
                         </button>
                       </div>
                     </td>

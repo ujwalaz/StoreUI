@@ -1,8 +1,22 @@
+import { useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
+
+const ORDERS_COUNT_KEY = 'gf_total_orders_placed'
+
+export function incrementOrderCount() {
+  const count = Number(localStorage.getItem(ORDERS_COUNT_KEY) || 0)
+  localStorage.setItem(ORDERS_COUNT_KEY, count + 1)
+}
+
+export function getTotalOrderCount() {
+  return Number(localStorage.getItem(ORDERS_COUNT_KEY) || 0)
+}
 
 export default function OrderConfirmed() {
   const [params] = useSearchParams()
   const orderId = params.get('orderId')
+
+  useEffect(() => { incrementOrderCount() }, [])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 to-indigo-50 p-4">

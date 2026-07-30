@@ -4,21 +4,32 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import MerchantLayout from '../../components/MerchantLayout'
 import StatusBadge from '../../components/StatusBadge'
 import { getMerchantOrders, updateOrderStatus, cancelOrder } from '../../api/orders'
+import { useT } from '../../i18n/useT'
 
+// English values used for API calls and URL params — display labels come from translations
 const TABS = ['All', 'Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled']
+const TAB_KEYS = {
+  All: 'orders.tabAll',
+  Pending: 'orders.tabPending',
+  Confirmed: 'orders.tabConfirmed',
+  Shipped: 'orders.tabShipped',
+  Delivered: 'orders.tabDelivered',
+  Cancelled: 'orders.tabCancelled',
+}
 
 const NEXT_STATUS = {
-  pending: { label: 'Confirm', next: 'confirmed', cls: 'bg-blue-600 text-white hover:bg-blue-700' },
-  confirmed: { label: 'Mark Shipped', next: 'shipped', cls: 'bg-purple-600 text-white hover:bg-purple-700' },
-  shipped: { label: 'Mark Delivered', next: 'delivered', cls: 'bg-green-600 text-white hover:bg-green-700' },
+  pending: { labelKey: 'orders.confirm', next: 'confirmed', cls: 'bg-blue-600 text-white hover:bg-blue-700' },
+  confirmed: { labelKey: 'orders.markShipped', next: 'shipped', cls: 'bg-purple-600 text-white hover:bg-purple-700' },
+  shipped: { labelKey: 'orders.markDelivered', next: 'delivered', cls: 'bg-green-600 text-white hover:bg-green-700' },
 }
 
 export default function Orders() {
+  const t = useT()
   const qc = useQueryClient()
   const [searchParams] = useSearchParams()
   const [tab, setTab] = useState(() => {
-    const t = searchParams.get('tab')
-    return TABS.includes(t) ? t : 'All'
+    const param = searchParams.get('tab')
+    return TABS.includes(param) ? param : 'All'
   })
   const status = tab === 'All' ? undefined : tab.toLowerCase()
 
@@ -38,23 +49,22 @@ export default function Orders() {
   })
 
   return (
-    <MerchantLayout title="Orders">
-      {/* Tabs */}
+    <MerchantLayout title={t('nav.orders')}>
       <div className="flex gap-1 flex-wrap mb-5">
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)}
+        {TABS.map(tabValue => (
+          <button key={tabValue} onClick={() => setTab(tabValue)}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
-              tab === t ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+              tab === tabValue ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}>
-            {t}
+            {t(TAB_KEYS[tabValue])}
           </button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="text-center py-20 text-gray-400">Loading…</div>
+        <div className="text-center py-20 text-gray-400">{t('orders.loading')}</div>
       ) : orders.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">No orders found</div>
+        <div className="text-center py-20 text-gray-400">{t('orders.empty')}</div>
       ) : (
         <div className="space-y-4">
           {orders.map(order => {
@@ -70,7 +80,6 @@ export default function Orders() {
                   <span className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString('en-IN')}</span>
                 </div>
 
-                {/* Items */}
                 {order.items && order.items.length > 0 && (
                   <div className="text-sm text-gray-600 space-y-0.5 mb-3">
                     {order.items.map(i => (
@@ -83,22 +92,22 @@ export default function Orders() {
                 )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="font-bold text-gray-800">Total: ₹{Number(order.totalAmount).toFixed(2)}</span>
+                  <span className="font-bold text-gray-800">{t('orders.total')} ₹{Number(order.totalAmount).toFixed(2)}</span>
                   <div className="flex gap-2">
                     {nextAction && (
                       <button
                         onClick={() => advance.mutate({ id: order.id, nextStatus: nextAction.next })}
                         disabled={advance.isPending}
                         className={`text-xs px-4 py-1.5 rounded-lg font-medium transition ${nextAction.cls} disabled:opacity-60`}>
-                        {nextAction.label}
+                        {t(nextAction.labelKey)}
                       </button>
                     )}
                     {canCancel && (
                       <button
-                        onClick={() => { if (confirm('Cancel this order?')) cancel.mutate(order.id) }}
+                        onClick={() => { if (confirm(t('orders.confirmCancel'))) cancel.mutate(order.id) }}
                         disabled={cancel.isPending}
                         className="text-xs px-4 py-1.5 rounded-lg font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition disabled:opacity-60">
-                        Cancel
+                        {t('orders.cancel')}
                       </button>
                     )}
                   </div>

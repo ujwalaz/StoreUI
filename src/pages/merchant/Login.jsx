@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { merchantLogin } from '../../api/auth'
+import { useLanguageStore } from '../../store/languageStore'
+import { useT } from '../../i18n/useT'
 
 export default function MerchantLogin() {
   const [form, setForm] = useState({ phoneNumber: '', password: '' })
@@ -8,19 +10,21 @@ export default function MerchantLogin() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
+  const t = useT()
+  const { lang, setLang } = useLanguageStore()
 
   const set = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!/^\d{10}$/.test(form.phoneNumber)) { setError('Enter a valid 10-digit mobile number'); return }
+    if (!/^\d{10}$/.test(form.phoneNumber)) { setError(t('login.errorPhone')); return }
     setLoading(true); setError('')
     try {
       const data = await merchantLogin(form.phoneNumber, form.password)
       localStorage.setItem('merchantToken', data.token)
       navigate('/merchant/dashboard')
     } catch {
-      setError('Invalid credentials. Please try again.')
+      setError(t('login.errorCreds'))
     } finally {
       setLoading(false)
     }
@@ -30,17 +34,26 @@ export default function MerchantLogin() {
     <div className="min-h-screen bg-slate-100 lg:flex">
       <div className="flex w-full items-center justify-center bg-white px-8 py-10 lg:w-2/5">
         <div className="w-full max-w-md">
+          <div className="mb-6 flex justify-end">
+            <button
+              onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
+              className="flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:border-indigo-300 hover:text-indigo-600"
+            >
+              {lang === 'en' ? '🇮🇳 हिंदी' : '🔤 English'}
+            </button>
+          </div>
+
           <div className="mb-10">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 text-2xl text-white shadow-lg">
               🏪
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Merchant Login</h1>
-            <p className="mt-2 text-sm text-gray-500">Sign in to manage products, inventory and orders for your store.</p>
+            <h1 className="text-3xl font-bold text-gray-900">{t('login.title')}</h1>
+            <p className="mt-2 text-sm text-gray-500">{t('login.subtitle')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">Phone Number</label>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">{t('login.phone')}</label>
               <div className="flex overflow-hidden rounded-2xl border border-gray-200 shadow-sm transition focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
                 <span className="inline-flex items-center border-l-4 border-transparent bg-gray-50 px-4 text-sm font-medium text-gray-500">
                   +91
@@ -51,21 +64,21 @@ export default function MerchantLogin() {
                   value={form.phoneNumber}
                   onChange={e => setForm(f => ({ ...f, phoneNumber: e.target.value.replace(/\D/g, '') }))}
                   required
-                  placeholder="10-digit mobile number"
+                  placeholder={t('login.phonePlaceholder')}
                   className="flex-1 border-l-4 border-transparent px-4 py-3.5 text-sm outline-none transition focus:border-l-indigo-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">Password</label>
+              <label className="mb-1.5 block text-sm font-semibold text-gray-700">{t('login.password')}</label>
               <div className="relative overflow-hidden rounded-2xl border border-gray-200 shadow-sm transition focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={set('password')}
                   required
-                  placeholder="Password"
+                  placeholder={t('login.passwordPlaceholder')}
                   className="w-full border-l-4 border-transparent px-4 py-3.5 pr-11 text-sm outline-none transition focus:border-l-indigo-500"
                 />
                 <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600">
@@ -84,12 +97,12 @@ export default function MerchantLogin() {
               disabled={loading}
               className="w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3.5 font-semibold text-white shadow-lg transition-all duration-200 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-60"
             >
-              {loading ? 'Signing in…' : 'Login'}
+              {loading ? t('login.signingIn') : t('login.submit')}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <a href="/" className="text-sm text-gray-400 transition hover:text-indigo-500">← Customer Shop</a>
+            <a href="/" className="text-sm text-gray-400 transition hover:text-indigo-500">{t('login.customerLink')}</a>
           </div>
         </div>
       </div>
@@ -98,14 +111,10 @@ export default function MerchantLogin() {
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.15) 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
         <div className="relative flex w-full flex-col justify-between px-14 py-12 text-white">
           <div>
-            <span className="rounded-full border border-white/20 bg-white/10 px-4 py-1 text-sm font-medium text-indigo-100">Store management suite</span>
-            <h2 className="mt-6 max-w-xl text-4xl font-extrabold leading-tight">Everything you need to run Grand Fresh like a modern retail business.</h2>
+            <span className="rounded-full border border-white/20 bg-white/10 px-4 py-1 text-sm font-medium text-indigo-100">{t('login.panelBadge')}</span>
+            <h2 className="mt-6 max-w-xl text-4xl font-extrabold leading-tight">{t('login.panelTitle')}</h2>
             <div className="mt-8 space-y-4 text-indigo-100">
-              {[
-                'Track stock levels and low inventory alerts in real time',
-                'Manage product pricing, images and catalogue updates',
-                'Process customer orders with a clean operational dashboard',
-              ].map(item => (
+              {[t('login.feature1'), t('login.feature2'), t('login.feature3')].map(item => (
                 <div key={item} className="flex items-start gap-3">
                   <span className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-sm">✓</span>
                   <span>{item}</span>

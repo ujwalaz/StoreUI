@@ -4,8 +4,10 @@ import MerchantLayout from '../../components/MerchantLayout'
 import { getMerchantProducts } from '../../api/products'
 import { getInventory, getLowStock } from '../../api/inventory'
 import { getMerchantOrders } from '../../api/orders'
+import { useT } from '../../i18n/useT'
 
 export default function Dashboard() {
+  const t = useT()
   const { data: products = [], isError: prodErr } = useQuery({ queryKey: ['mProducts'], queryFn: getMerchantProducts })
   const { data: inventory = [] } = useQuery({ queryKey: ['inventory'], queryFn: getInventory })
   const { data: lowStock = [] } = useQuery({ queryKey: ['lowStock'], queryFn: getLowStock })
@@ -16,55 +18,55 @@ export default function Dashboard() {
 
   const tiles = [
     {
-      label: 'Active Products',
+      label: t('dash.activeProducts'),
       value: products.length,
       to: '/merchant/products',
-      trend: `${prodErr ? 'Data unavailable' : 'Catalog ready for sale'}`,
+      trend: prodErr ? t('dash.dataUnavailable') : t('dash.catalogReady'),
       accent: 'from-indigo-500 to-indigo-600',
       icon: CubeIcon,
     },
     {
-      label: 'Low Stock Items',
+      label: t('dash.lowStockItems'),
       value: lowStock.length,
       to: '/merchant/inventory?status=low',
-      trend: `${lowStock.length} need restock soon`,
+      trend: t('dash.needRestock', { count: lowStock.length }),
       accent: 'from-amber-400 to-orange-500',
       icon: AlertIcon,
     },
     {
-      label: 'Out of Stock',
+      label: t('dash.outOfStock'),
       value: outOfStock,
       to: '/merchant/inventory?status=out',
-      trend: `${outOfStock} unavailable right now`,
+      trend: t('dash.unavailableNow', { count: outOfStock }),
       accent: 'from-rose-400 to-rose-500',
       icon: BoxOffIcon,
     },
     {
-      label: 'Pending Orders',
+      label: t('dash.pendingOrders'),
       value: pending,
       to: '/merchant/orders?tab=Pending',
-      trend: `${pending} orders awaiting action`,
+      trend: t('dash.ordersAwaiting', { count: pending }),
       accent: 'from-purple-500 to-fuchsia-500',
       icon: BagIcon,
     },
     {
-      label: 'Total Orders',
+      label: t('dash.totalOrders'),
       value: orders.length,
       to: '/merchant/orders',
-      trend: `${ordErr ? 'Data unavailable' : 'Overall store demand'}`,
+      trend: ordErr ? t('dash.dataUnavailable') : t('dash.overallDemand'),
       accent: 'from-emerald-500 to-teal-500',
       icon: ChartIcon,
     },
   ]
 
   const actions = [
-    { label: 'Add Product', to: '/merchant/products', tone: 'bg-indigo-600 text-white hover:bg-indigo-700' },
-    { label: 'Update Inventory', to: '/merchant/inventory', tone: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50' },
-    { label: 'View Pending Orders', to: '/merchant/orders?tab=Pending', tone: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50' },
+    { label: t('dash.addProduct'), to: '/merchant/products', tone: 'bg-indigo-600 text-white hover:bg-indigo-700' },
+    { label: t('dash.updateInventory'), to: '/merchant/inventory', tone: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50' },
+    { label: t('dash.viewPendingOrders'), to: '/merchant/orders?tab=Pending', tone: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50' },
   ]
 
   return (
-    <MerchantLayout title="Dashboard">
+    <MerchantLayout title={t('nav.dashboard')}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         {tiles.map(tile => {
           const Icon = tile.icon
@@ -78,13 +80,13 @@ export default function Dashboard() {
                 <div className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${tile.accent} text-white shadow-md`}>
                   <Icon className="h-6 w-6" />
                 </div>
-                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">Live</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">{t('dash.live')}</span>
               </div>
               <p className="text-sm font-medium text-gray-500">{tile.label}</p>
               <p className="mt-2 text-3xl font-bold text-gray-900">{tile.value}</p>
               <p className="mt-3 text-sm text-gray-500">{tile.trend}</p>
               <span className="mt-5 inline-flex items-center text-sm font-semibold text-indigo-600">
-                View all →
+                {t('dash.viewAll')}
               </span>
             </Link>
           )
@@ -94,8 +96,8 @@ export default function Dashboard() {
       <section className="mt-8 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Quick Actions</h2>
-            <p className="text-sm text-gray-500">Jump straight into the tasks that keep your store running smoothly.</p>
+            <h2 className="text-xl font-bold text-gray-900">{t('dash.quickActions')}</h2>
+            <p className="text-sm text-gray-500">{t('dash.quickActionsSubtitle')}</p>
           </div>
         </div>
 
