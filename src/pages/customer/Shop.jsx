@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getCustomerProducts } from '../../api/products'
 import { getMerchantInfo } from '../../api/merchant'
+import { getCustomerCategories } from '../../api/categories'
 import ProductCard from '../../components/ProductCard'
 import CartSidebar from '../../components/CartSidebar'
 import { useCartStore } from '../../store/cartStore'
@@ -10,6 +11,7 @@ import { useCartStore } from '../../store/cartStore'
 export default function Shop() {
   const [cartOpen, setCartOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState(null)
   const cartCount = useCartStore(s => s.items.reduce((n, i) => n + i.quantity, 0))
 
   const { data: products = [], isLoading: loadingProducts } = useQuery({
@@ -22,8 +24,18 @@ export default function Shop() {
     queryFn: getMerchantInfo
   })
 
+  const { data: allCategories = [] } = useQuery({
+    queryKey: ['customerCategories'],
+    queryFn: getCustomerCategories
+  })
+
+  // Only show categories that have at least one product in the loaded list
+  const activeCategoryIds = new Set(products.map(p => p.categoryId).filter(Boolean))
+  const categories = allCategories.filter(c => activeCategoryIds.has(c.id))
+
   const filtered = products
     .filter(p => p.name?.toLowerCase().includes(search.toLowerCase()))
+    .filter(p => selectedCategory == null || p.categoryId === selectedCategory)
     .sort((a, b) => {
       const aOut = (a.quantity ?? 0) <= 0
       const bOut = (b.quantity ?? 0) <= 0
@@ -80,6 +92,36 @@ export default function Shop() {
             className="w-full rounded-full border border-white/40 bg-white px-4 py-2.5 text-sm text-gray-700 shadow-sm outline-none transition focus:border-white focus:ring-2 focus:ring-white/50"
           />
         </div>
+
+        {categories.length > 0 && (
+          <div className="overflow-x-auto px-4 pb-3 scrollbar-none">
+            <div className="flex gap-2 min-w-max">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition ${
+                  selectedCategory == null
+                    ? 'bg-white text-indigo-700 shadow'
+                    : 'bg-white/20 text-white hover:bg-white/30'
+                }`}
+              >
+                All
+              </button>
+              {categories.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedCategory(selectedCategory === c.id ? null : c.id)}
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition ${
+                    selectedCategory === c.id
+                      ? 'bg-white text-indigo-700 shadow'
+                      : 'bg-white/20 text-white hover:bg-white/30'
+                  }`}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="page-enter mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8">

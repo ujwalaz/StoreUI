@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { customerLogin } from '../../api/auth'
+import { getTotalOrderCount } from './OrderConfirmed'
 
 export default function PhoneEntry() {
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [orderCount, setOrderCount] = useState(0)
   const navigate = useNavigate()
 
   useEffect(() => {
     if (localStorage.getItem('customerToken')) navigate('/shop')
+    setOrderCount(getTotalOrderCount())
   }, [navigate])
 
   const handleSubmit = async (e) => {
@@ -97,7 +100,6 @@ export default function PhoneEntry() {
               </form>
             </div>
 
-            <p className="mt-4 text-center text-sm font-medium text-gray-400">Trusted by 1000+ customers</p>
             <div className="mt-4 text-center">
               <a href="/merchant/login" className="text-sm font-medium text-indigo-600 transition hover:text-indigo-800">Merchant Login →</a>
             </div>

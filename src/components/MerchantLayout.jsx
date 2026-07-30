@@ -3,18 +3,21 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import merchantApi from '../api/merchantApi'
 import NotificationBell from './NotificationBell'
+import { useLanguageStore } from '../store/languageStore'
+import { useT } from '../i18n/useT'
 
 const getMerchantInfo = () => merchantApi.get('/api/merchant/info').then(r => r.data)
 
 const NAV = [
-  { to: '/merchant/dashboard', label: 'Dashboard', icon: ChartIcon },
-  { to: '/merchant/products', label: 'Products', icon: CubeIcon },
-  { to: '/merchant/inventory', label: 'Inventory', icon: ClipboardIcon },
-  { to: '/merchant/orders', label: 'Orders', icon: BagIcon },
+  { to: '/merchant/dashboard', labelKey: 'nav.dashboard', icon: ChartIcon },
+  { to: '/merchant/products', labelKey: 'nav.products', icon: CubeIcon },
+  { to: '/merchant/inventory', labelKey: 'nav.inventory', icon: ClipboardIcon },
+  { to: '/merchant/orders', labelKey: 'nav.orders', icon: BagIcon },
 ]
 
 export default function MerchantLayout({ children, title }) {
   const navigate = useNavigate()
+  const t = useT()
   const [collapsed, setCollapsed] = useState(() => window.innerWidth < 768)
   const { data: merchantInfo } = useQuery({ queryKey: ['merchantInfo'], queryFn: getMerchantInfo })
   const logout = () => {
@@ -29,15 +32,15 @@ export default function MerchantLayout({ children, title }) {
           <div className="flex items-start justify-between gap-3">
             {!collapsed && (
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-indigo-100">Grand Fresh</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-indigo-100">{t('layout.brand')}</p>
                 <p className="mt-1 truncate text-lg font-bold">
-                  {merchantInfo?.businessName || 'Merchant Panel'}
+                  {merchantInfo?.businessName || t('layout.merchantPanel')}
                 </p>
               </div>
             )}
             <button
               onClick={() => setCollapsed(c => !c)}
-              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={collapsed ? t('layout.expandSidebar') : t('layout.collapseSidebar')}
               className="ml-auto shrink-0 rounded-xl border border-white/20 bg-white/10 p-2 text-white transition hover:bg-white/20"
             >
               {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
@@ -46,11 +49,11 @@ export default function MerchantLayout({ children, title }) {
         </div>
 
         <nav className="flex-1 space-y-1 p-3">
-          {NAV.map(({ to, label, icon: Icon }) => (
+          {NAV.map(({ to, labelKey, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
-              title={collapsed ? label : undefined}
+              title={collapsed ? t(labelKey) : undefined}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition ${
                   collapsed ? 'justify-center' : ''
@@ -58,7 +61,7 @@ export default function MerchantLayout({ children, title }) {
               }
             >
               <Icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{label}</span>}
+              {!collapsed && <span>{t(labelKey)}</span>}
             </NavLink>
           ))}
         </nav>
@@ -66,11 +69,11 @@ export default function MerchantLayout({ children, title }) {
         <div className="border-t border-white/10 p-3">
           <button
             onClick={logout}
-            title={collapsed ? 'Logout' : undefined}
+            title={collapsed ? t('layout.logout') : undefined}
             className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium text-red-400 transition hover:bg-gray-800 ${collapsed ? 'justify-center' : ''}`}
           >
             <LogoutIcon className="h-5 w-5 shrink-0" />
-            {!collapsed && <span>Logout</span>}
+            {!collapsed && <span>{t('layout.logout')}</span>}
           </button>
         </div>
       </aside>
@@ -80,16 +83,17 @@ export default function MerchantLayout({ children, title }) {
           <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-indigo-600 via-purple-500 to-transparent" />
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Merchant / {title}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">{t('layout.breadcrumb', { title })}</p>
               <h1 className="mt-1 text-2xl font-bold text-gray-800">{title}</h1>
             </div>
             <div className="flex items-center gap-3">
               {!collapsed && (
                 <div className="hidden rounded-2xl border border-gray-200 bg-slate-50 px-4 py-2 text-right lg:block">
-                  <p className="text-xs text-gray-500">Signed in as</p>
-                  <p className="text-sm font-semibold text-gray-700">{merchantInfo?.businessName || 'Grand Fresh'}</p>
+                  <p className="text-xs text-gray-500">{t('layout.signedInAs')}</p>
+                  <p className="text-sm font-semibold text-gray-700">{merchantInfo?.businessName || t('layout.brand')}</p>
                 </div>
               )}
+              <LanguageToggle />
               <NotificationBell />
             </div>
           </div>
@@ -97,6 +101,19 @@ export default function MerchantLayout({ children, title }) {
         <div className="flex-1 overflow-auto p-6">{children}</div>
       </main>
     </div>
+  )
+}
+
+function LanguageToggle() {
+  const { lang, setLang } = useLanguageStore()
+  return (
+    <button
+      onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
+      title={lang === 'en' ? 'Switch to Hindi' : 'Switch to English'}
+      className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600"
+    >
+      {lang === 'en' ? '🇮🇳 हिंदी' : '🔤 English'}
+    </button>
   )
 }
 
