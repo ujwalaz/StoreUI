@@ -244,7 +244,7 @@ export default function Products() {
           {search ? t('products.noMatch') : t('products.empty')}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
           {filtered.map(p => (
             <div key={p.id} className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md">
               {p.imageUrl || p.imageUrlBack ? (
@@ -301,7 +301,7 @@ export default function Products() {
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white p-4 shadow-2xl sm:p-6">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{modal.mode === 'add' ? t('products.modalTitleAdd') : t('products.modalTitleEdit')}</h2>

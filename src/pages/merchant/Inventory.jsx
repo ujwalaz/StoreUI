@@ -79,68 +79,125 @@ export default function Inventory() {
       {isLoading ? (
         <div className="py-20 text-center text-gray-400">{t('inv.loading')}</div>
       ) : (
-        <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-slate-50">
-              <tr>
-                {[t('inv.colProduct'), t('inv.colStock'), t('inv.colThreshold'), t('inv.colStatus'), t('inv.colUpdate')].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map(item => {
-                const { label, cls } = badge(item)
-                const isLow = item.quantityOnHand <= item.lowStockThreshold && item.quantityOnHand > 0
-                return (
-                  <tr key={item.productId} className={`${isLow ? 'bg-amber-50/40' : 'bg-white'} hover:bg-gray-50`}>
-                    <td className="px-4 py-4 font-medium text-gray-800">
-                      {item.productName || `Product #${item.productId}`}
-                    </td>
-                    <td className="px-4 py-4 text-gray-700">{item.quantityOnHand}</td>
-                    <td className="px-4 py-4 text-gray-500">{item.lowStockThreshold}</td>
-                    <td className="px-4 py-4">
-                      <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>{label}</span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="flex items-center rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <>
+          {/* Mobile card layout */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {filtered.map(item => {
+              const { label, cls } = badge(item)
+              const isLow = item.quantityOnHand <= item.lowStockThreshold && item.quantityOnHand > 0
+              return (
+                <div
+                  key={item.productId}
+                  className={`rounded-2xl border border-gray-100 p-4 shadow-sm ${isLow ? 'bg-amber-50/40' : 'bg-white'}`}
+                >
+                  <div className="mb-3 flex items-start justify-between gap-2">
+                    <p className="font-medium text-gray-800">{item.productName || `Product #${item.productId}`}</p>
+                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>{label}</span>
+                  </div>
+                  <div className="mb-3 flex gap-4 text-sm text-gray-500">
+                    <span>{t('inv.colStock')}: <strong className="text-gray-800">{item.quantityOnHand}</strong></span>
+                    <span>{t('inv.colThreshold')}: <strong className="text-gray-800">{item.lowStockThreshold}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center rounded-2xl border border-gray-200 bg-white shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setQty(item.productId, getQty(item) - 1)}
+                        className="px-3 py-2 text-indigo-600 transition hover:bg-indigo-50"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        value={getQty(item)}
+                        onChange={e => setQty(item.productId, Number(e.target.value))}
+                        className="w-16 border-x border-gray-200 px-2 py-2 text-center text-sm outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setQty(item.productId, getQty(item) + 1)}
+                        className="px-3 py-2 text-indigo-600 transition hover:bg-indigo-50"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => update.mutate({ productId: item.productId, quantity: getQty(item) })}
+                      className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
+                    >
+                      {t('inv.save')}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Desktop table layout */}
+          <div className="hidden overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm md:block">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-slate-50">
+                <tr>
+                  {[t('inv.colProduct'), t('inv.colStock'), t('inv.colThreshold'), t('inv.colStatus'), t('inv.colUpdate')].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map(item => {
+                  const { label, cls } = badge(item)
+                  const isLow = item.quantityOnHand <= item.lowStockThreshold && item.quantityOnHand > 0
+                  return (
+                    <tr key={item.productId} className={`${isLow ? 'bg-amber-50/40' : 'bg-white'} hover:bg-gray-50`}>
+                      <td className="px-4 py-4 font-medium text-gray-800">
+                        {item.productName || `Product #${item.productId}`}
+                      </td>
+                      <td className="px-4 py-4 text-gray-700">{item.quantityOnHand}</td>
+                      <td className="px-4 py-4 text-gray-500">{item.lowStockThreshold}</td>
+                      <td className="px-4 py-4">
+                        <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>{label}</span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center rounded-2xl border border-gray-200 bg-white shadow-sm">
+                            <button
+                              type="button"
+                              onClick={() => setQty(item.productId, getQty(item) - 1)}
+                              className="px-3 py-2 text-indigo-600 transition hover:bg-indigo-50"
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              min="0"
+                              value={getQty(item)}
+                              onChange={e => setQty(item.productId, Number(e.target.value))}
+                              className="w-20 border-x border-gray-200 px-2 py-2 text-center text-sm outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setQty(item.productId, getQty(item) + 1)}
+                              className="px-3 py-2 text-indigo-600 transition hover:bg-indigo-50"
+                            >
+                              +
+                            </button>
+                          </div>
                           <button
-                            type="button"
-                            onClick={() => setQty(item.productId, getQty(item) - 1)}
-                            className="px-3 py-2 text-indigo-600 transition hover:bg-indigo-50"
+                            onClick={() => update.mutate({ productId: item.productId, quantity: getQty(item) })}
+                            className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
                           >
-                            −
-                          </button>
-                          <input
-                            type="number"
-                            min="0"
-                            value={getQty(item)}
-                            onChange={e => setQty(item.productId, Number(e.target.value))}
-                            className="w-20 border-x border-gray-200 px-2 py-2 text-center text-sm outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setQty(item.productId, getQty(item) + 1)}
-                            className="px-3 py-2 text-indigo-600 transition hover:bg-indigo-50"
-                          >
-                            +
+                            {t('inv.save')}
                           </button>
                         </div>
-                        <button
-                          onClick={() => update.mutate({ productId: item.productId, quantity: getQty(item) })}
-                          className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
-                        >
-                          {t('inv.save')}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </MerchantLayout>
   )
